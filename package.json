@@ -1,0 +1,56 @@
+{
+  "name": "monaco-editor-boilerplate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Boilerplate for projects using ES2015 and React",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/satya164/react-boilerplate.git"
+  },
+  "scripts": {
+    "start": "concurrently 'serve --port 3021 dist/workers' 'webpack-dev-server --config webpack/client.config.js'",
+    "prestart": "webpack --config webpack/worker.config.js",
+    "flow": "flow",
+    "lint": "eslint .",
+    "build:client": "webpack -p --env.NODE_ENV production --config webpack/client.config.js",
+    "build:worker": "webpack -p --env.NODE_ENV production --config webpack/worker.config.js",
+    "build": "yarn build:client && yarn build:worker",
+    "prebuild": "del dist && del workers"
+  },
+  "author": "Satyajit Sahoo <satyajit.happy@gmail.com> (https://github.com/satya164/)",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.3",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-transform-react-constant-elements": "^6.23.0",
+    "babel-plugin-transform-react-inline-elements": "^6.22.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "concurrently": "^3.5.1",
+    "cross-env": "^5.1.6",
+    "css-loader": "^0.28.11",
+    "del-cli": "^1.1.0",
+    "eslint": "^4.19.1",
+    "eslint-config-satya164": "^1.0.2",
+    "file-loader": "^1.1.11",
+    "flow-bin": "^0.73.0",
+    "identity-obj-proxy": "^3.0.0",
+    "prettier": "^1.12.1",
+    "react-transform-catch-errors": "^1.0.2",
+    "react-transform-hmr": "^1.0.4",
+    "redbox-react": "^1.6.0",
+    "serve": "^6.5.8",
+    "style-loader": "^0.21.0",
+    "url-loader": "^1.0.1",
+    "webpack": "^3.11.0",
+    "webpack-dev-server": "^2.11.1"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.13.1",
+    "react": "^16.4.0",
+    "react-dom": "^16.4.0"
+  }
+}

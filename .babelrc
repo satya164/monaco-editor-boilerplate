@@ -1,0 +1,11 @@
+{
+  "presets": [["env", { "modules": false }], "react", "stage-2"],
+  "env": {
+    "production": {
+      "plugins": [
+        "transform-react-constant-elements",
+        "transform-react-inline-elements"
+      ]
+    }
+  }
+}
