@@ -27,18 +27,32 @@ global.MonacoEnvironment = {
   },
 };
 
-const code = `function x() {
-  console.log("Hello world!");
-}`;
+type Props = {
+  value: string,
+  onValueChange: (value: string) => mixed,
+  language: 'json' | 'css' | 'html' | 'typescript' | 'javascript',
+  lineNumbers?: 'on' | 'off',
+  scrollBeyondLastLine?: boolean,
+};
 
-export default class Editor extends React.Component<*> {
+export default class Editor extends React.Component<Props> {
+  static defaultProps = {
+    lineNumbers: 'on',
+    scrollBeyondLastLine: false,
+  };
+
   componentDidMount() {
-    monaco.editor.create(this._node, {
-      value: code,
-      language: 'javascript',
-    });
+    this._editor = monaco.editor.create(this._node, { ...this.props });
+    this._editor.model.onDidChangeContent(() =>
+      this.props.onValueChange(this._editor.viewModel.model.getValue())
+    );
   }
 
+  componentDidUpdate() {
+    this._editor.updateOptions({ ...this.props });
+  }
+
+  _editor: any;
   _node: any;
 
   render() {

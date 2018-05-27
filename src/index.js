@@ -2,14 +2,14 @@
 
 import * as React from 'react';
 import ReactDOM from 'react-dom';
-import Editor from './Editor';
+import App from './App';
 
 const render = Component => ReactDOM.render(<Component />, window.root);
 
-render(Editor);
+render(App);
 
 /* $FlowFixMe */
 if (module.hot) {
   /* $FlowFixMe */
-  module.hot.accept('./Editor', () => render(Editor));
+  module.hot.accept('./App', () => render(App));
 }
