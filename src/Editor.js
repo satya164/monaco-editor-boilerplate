@@ -44,6 +44,13 @@ type Props = {
   language: 'json' | 'css' | 'html' | 'typescript' | 'javascript',
   lineNumbers?: 'on' | 'off',
   scrollBeyondLastLine?: boolean,
+  minimap?: {
+    enabled?: boolean,
+    maxColumn?: number,
+    renderCharacters?: boolean,
+    showSlider?: 'always' | 'mouseover',
+    side?: 'right' | 'left',
+  },
 };
 
 const models = new Map();
@@ -52,6 +59,9 @@ export default class Editor extends React.Component<Props> {
   static defaultProps = {
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
+    minimap: {
+      enabled: false,
+    },
   };
 
   static removePath(path: string) {
