@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Editor, { type Annotation } from './Editor';
 import ESLint from './vendor/eslint.bundle';
+import config from './config/eslint';
 
 const code = `import React, { Component } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
@@ -68,19 +69,7 @@ export default class App extends React.Component<{}, State> {
 
   _handleValueChange = code =>
     this.setState(state => {
-      const annotations = ESLint.verify(state.files[state.current], {
-        parser: 'babel-eslint',
-        parserOptions: {
-          sourceType: 'module',
-        },
-        env: {
-          es6: true,
-        },
-        plugins: ['babel', 'react', 'react-native'],
-        rules: {
-          'no-unused-vars': 'error',
-        },
-      }).map(err => ({
+      const annotations = ESLint.verify(state.files[state.current], config).map(err => ({
         row: err.line,
         column: err.column,
         severity: err.message.toLowerCase().startsWith('parsing error')
