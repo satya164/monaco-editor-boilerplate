@@ -59,17 +59,16 @@ export default class Editor extends React.Component<Props> {
     this._editor.model.onDidChangeContent(() =>
       this.props.onValueChange(this._editor.viewModel.model.getValue())
     );
-
-    global.monaco = monaco;
-    global.editor = this._editor;
   }
 
   componentDidUpdate(prevProps: Props) {
-    const { annotations, ...rest } = this.props;
+    const { annotations, value, ...rest } = this.props;
 
     this._editor.updateOptions(rest);
 
-    console.log(annotations);
+    if (value !== prevProps.value) {
+      this._editor.viewModel.model.setValue(value);
+    }
 
     if (annotations !== prevProps.annotations) {
       monaco.editor.setModelMarkers(
@@ -95,7 +94,7 @@ export default class Editor extends React.Component<Props> {
     return (
       <div
         ref={c => (this._node = findDOMNode(c))}
-        style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}
+        style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
       />
     );
   }
