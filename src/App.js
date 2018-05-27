@@ -88,6 +88,7 @@ export default class App extends React.Component<{}, State> {
           ))}
         </div>
         <Editor
+          path={this.state.current}
           value={this.state.files[this.state.current]}
           onValueChange={this._handleValueChange}
           language="javascript"
