@@ -27,9 +27,19 @@ global.MonacoEnvironment = {
   },
 };
 
+export type Annotation = {
+  row: number,
+  column: number,
+  severity: number,
+  text: string,
+  type: 'error',
+  source: string,
+};
+
 type Props = {
   value: string,
   onValueChange: (value: string) => mixed,
+  annotations: Annotation[],
   language: 'json' | 'css' | 'html' | 'typescript' | 'javascript',
   lineNumbers?: 'on' | 'off',
   scrollBeyondLastLine?: boolean,
@@ -42,14 +52,40 @@ export default class Editor extends React.Component<Props> {
   };
 
   componentDidMount() {
-    this._editor = monaco.editor.create(this._node, { ...this.props });
+    // eslint-disable-next-line no-unused-vars
+    const { annotations, ...rest } = this.props;
+
+    this._editor = monaco.editor.create(this._node, rest);
     this._editor.model.onDidChangeContent(() =>
       this.props.onValueChange(this._editor.viewModel.model.getValue())
     );
+
+    global.monaco = monaco;
+    global.editor = this._editor;
   }
 
-  componentDidUpdate() {
-    this._editor.updateOptions({ ...this.props });
+  componentDidUpdate(prevProps: Props) {
+    const { annotations, ...rest } = this.props;
+
+    this._editor.updateOptions(rest);
+
+    console.log(annotations);
+
+    if (annotations !== prevProps.annotations) {
+      monaco.editor.setModelMarkers(
+        this._editor.model,
+        '',
+        annotations.map(annotation => ({
+          startLineNumber: annotation.row,
+          endLineNumber: annotation.row,
+          startColumn: annotation.column,
+          endColumn: annotation.column,
+          message: annotation.text,
+          severity: annotation.severity,
+          source: annotation.source,
+        }))
+      );
+    }
   }
 
   _editor: any;

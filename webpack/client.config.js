@@ -54,7 +54,7 @@ module.exports = (env = { NODE_ENV: 'development' }) => ({
     rules: [
       {
         test: /\.js$/,
-        exclude: /node_modules/,
+        exclude: /node_modules|vendor/,
         use: {
           loader: 'babel-loader',
         },
