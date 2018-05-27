@@ -36,12 +36,14 @@ export type Annotation = {
   source: string,
 };
 
+type Language = 'json' | 'css' | 'html' | 'typescript' | 'javascript';
+
 type Props = {
   path: string,
   value: string,
   onValueChange: (value: string) => mixed,
   annotations: Annotation[],
-  language: 'json' | 'css' | 'html' | 'typescript' | 'javascript',
+  language: Language,
   lineNumbers?: 'on' | 'off',
   scrollBeyondLastLine?: boolean,
   minimap?: {
@@ -81,13 +83,9 @@ export default class Editor extends React.Component<Props> {
   componentDidMount() {
     // eslint-disable-next-line no-unused-vars
     const { path, annotations, value, language, ...rest } = this.props;
-    const model = monaco.editor.createModel(value, language, path);
 
     this._editor = monaco.editor.create(this._node, rest);
-    this._editor.setModel(model);
-    this._subscribe();
-
-    models.set(this.props.path, this._editor.getModel());
+    this._openFile(path, value, language);
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -96,16 +94,7 @@ export default class Editor extends React.Component<Props> {
     this._editor.updateOptions(rest);
 
     if (path !== prevProps.path) {
-      let model = models.get(path);
-
-      if (!model) {
-        model = monaco.editor.createModel(value, language, path);
-        models.set(path, model);
-      }
-
-      this._editor.setModel(model);
-      this._editor.focus();
-      this._subscribe();
+      this._openFile(path, value, language);
     } else if (value !== this._editor.getModel().getValue()) {
       this._editor.getModel().setValue(value);
     }
@@ -132,7 +121,17 @@ export default class Editor extends React.Component<Props> {
     this._editor.dispose();
   }
 
-  _subscribe = () => {
+  _openFile = (path: string, value: string, language: Language) => {
+    let model = models.get(path);
+
+    if (!model) {
+      model = monaco.editor.createModel(value, language, path);
+      models.set(path, model);
+    }
+
+    this._editor.setModel(model);
+    this._editor.focus();
+
     this._subscription && this._subscription.dispose();
     this._subscription = this._editor
       .getModel()
