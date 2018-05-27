@@ -7,11 +7,13 @@ module.exports = (env = { NODE_ENV: 'development' }) => ({
   target: 'webworker',
   devtool: 'source-map',
   entry: {
+    // Language service workers
     'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
     'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
-    'css.worker': 'monaco-editor/esm/vs/language/css/css.worker',
-    'html.worker': 'monaco-editor/esm/vs/language/html/html.worker',
     'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
+
+    // Custom workers
+    'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
   },
   output: {
     path: path.resolve(__dirname, '..', 'dist', 'workers'),
@@ -38,4 +40,15 @@ module.exports = (env = { NODE_ENV: 'development' }) => ({
         ]
       : [new webpack.NamedModulesPlugin(), new webpack.NoEmitOnErrorsPlugin()]
   ),
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules|vendor/,
+        use: {
+          loader: 'babel-loader',
+        },
+      },
+    ],
+  },
 });

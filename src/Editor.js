@@ -89,6 +89,16 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidMount() {
+    this._syntaxWorker = new Worker(
+      `data:text/javascript;charset=utf-8,${encodeURIComponent(
+        `importScripts('${WORKER_BASE_URL}/jsx-syntax.worker.bundle.js');`
+      )}`
+    );
+
+    this._syntaxWorker.addEventListener('message', ({ data }: any) =>
+      this._updateDecorations(data)
+    );
+
     // eslint-disable-next-line no-unused-vars
     const { path, annotations, value, language, ...rest } = this.props;
 
@@ -112,6 +122,7 @@ export default class Editor extends React.Component<Props> {
       this._openFile(path, value, language);
     } else if (value !== this._editor.getModel().getValue()) {
       this._editor.getModel().setValue(value);
+      this._sytaxHighlight(path, value, language);
     }
 
     if (annotations !== prevProps.annotations) {
@@ -134,6 +145,7 @@ export default class Editor extends React.Component<Props> {
   componentWillUnmount() {
     this._subscription && this._subscription.dispose();
     this._editor.dispose();
+    this._syntaxWorker.terminate();
   }
 
   _openFile = (path: string, value: string, language: Language) => {
@@ -159,13 +171,56 @@ export default class Editor extends React.Component<Props> {
     this._editor.focus();
 
     this._subscription && this._subscription.dispose();
-    this._subscription = this._editor
-      .getModel()
-      .onDidChangeContent(() =>
-        this.props.onValueChange(this._editor.getModel().getValue())
-      );
+    this._subscription = this._editor.getModel().onDidChangeContent(() => {
+      this.props.onValueChange(this._editor.getModel().getValue());
+      this._sytaxHighlight(path, value, language);
+    });
+
+    this._sytaxHighlight(path, value, language);
   };
 
+  _sytaxHighlight = (path, code, language) => {
+    if (language === 'typescript' || language === 'javascript') {
+      this._syntaxWorker.postMessage({
+        code,
+        title: path,
+        version: this._editor.getModel().getVersionId(),
+      });
+    }
+  };
+
+  _updateDecorations = ({ classifications, version }: any) => {
+    requestAnimationFrame(() => {
+      const model = this._editor.getModel();
+
+      if (model) {
+        const decorations = classifications.map(classification => ({
+          range: new monaco.Range(
+            classification.startLine,
+            classification.start,
+            classification.endLine,
+            classification.end
+          ),
+          options: {
+            inlineClassName: classification.type
+              ? `${classification.kind} ${classification.type}-of-${
+                  classification.parentKind
+                }`
+              : classification.kind,
+          },
+        }));
+
+        const model = this._editor.getModel();
+
+        model.decorations = this._editor.deltaDecorations(
+          model.decorations || [],
+          decorations
+        );
+      }
+    });
+  };
+
+  _syntaxWorker: Worker;
   _subscription: any;
   _editor: any;
   _node: any;
