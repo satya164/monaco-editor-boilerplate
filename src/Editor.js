@@ -56,6 +56,7 @@ type Props = {
 };
 
 const models = new Map();
+const selections = new Map();
 
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
@@ -71,6 +72,8 @@ export default class Editor extends React.Component<Props> {
 
     model && model.dispose();
     models.delete(path);
+
+    selections.delete(path);
   }
 
   static renamePath(prevPath: string, nextPath: string) {
@@ -78,6 +81,11 @@ export default class Editor extends React.Component<Props> {
 
     models.delete(prevPath);
     models.set(nextPath, model);
+
+    const selection = selections.get(prevPath);
+
+    selections.delete(prevPath);
+    selections.set(nextPath, selection);
   }
 
   componentDidMount() {
@@ -85,6 +93,13 @@ export default class Editor extends React.Component<Props> {
     const { path, annotations, value, language, ...rest } = this.props;
 
     this._editor = monaco.editor.create(this._node, rest);
+    this._editor.onDidChangeCursorSelection(selectionChange => {
+      selections.set(this.props.path, {
+        selection: selectionChange.selection,
+        secondarySelections: selectionChange.secondarySelections,
+      });
+    });
+
     this._openFile(path, value, language);
   }
 
@@ -130,6 +145,17 @@ export default class Editor extends React.Component<Props> {
     }
 
     this._editor.setModel(model);
+
+    const selection = selections.get(path);
+
+    if (selection) {
+      this._editor.setSelection(selection.selection);
+
+      if (selection.secondarySelections.length) {
+        this._editor.setSelections(selection.secondarySelections);
+      }
+    }
+
     this._editor.focus();
 
     this._subscription && this._subscription.dispose();
