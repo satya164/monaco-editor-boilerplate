@@ -2,7 +2,10 @@
 
 import * as monaco from 'monaco-editor'; // eslint-disable-line import/no-unresolved
 import * as React from 'react';
+import Helmet from 'react-helmet';
 import debounce from 'lodash/debounce';
+import light from './themes/light';
+import dark from './themes/dark';
 
 const WORKER_BASE_URL = 'http://localhost:3021';
 
@@ -26,6 +29,69 @@ global.MonacoEnvironment = {
     `)}`;
   },
 };
+
+monaco.editor.defineTheme('snack-light', light);
+monaco.editor.defineTheme('snack-dark', dark);
+
+const cssText = `
+  /* Common overrides */
+  .monaco-editor .line-numbers {
+    color: currentColor;
+    opacity: .5;
+  }
+
+  /* Light theme overrides */
+  .theme-snack-light .JsxText {
+    color: ${light.colors['editor.foreground']};
+  }
+
+  .theme-snack-light .JsxSelfClosingElement,
+  .theme-snack-light .JsxOpeningElement,
+  .theme-snack-light .JsxClosingElement,
+  .theme-snack-light .tagName-of-JsxOpeningElement,
+  .theme-snack-light .tagName-of-JsxClosingElement,
+  .theme-snack-light .tagName-of-JsxSelfClosingElement {
+    color: #41a6d9;
+  }
+
+  .theme-snack-light .name-of-JsxAttribute {
+    color: #f08c36;
+  }
+
+  .theme-snack-light .name-of-PropertyAssignment {
+    color: #86b300;
+  }
+
+  .theme-snack-light .name-of-PropertyAccessExpression {
+    color: #f08c36;
+  }
+
+  /* Dark theme overrides */
+  .theme-snack-dark .JsxText {
+    color: ${dark.colors['editor.foreground']};
+  }
+
+  .theme-snack-dark .JsxSelfClosingElement,
+  .theme-snack-dark .JsxOpeningElement,
+  .theme-snack-dark .JsxClosingElement,
+  .theme-snack-dark .tagName-of-JsxOpeningElement,
+  .theme-snack-dark .tagName-of-JsxClosingElement,
+  .theme-snack-dark .tagName-of-JsxSelfClosingElement {
+    color: #5ccfe6;
+  }
+
+  .theme-snack-dark .name-of-JsxAttribute {
+    color: #ffcf71;
+  }
+
+  .theme-snack-dark .name-of-PropertyAssignment {
+    color: #bae67e;
+  }
+
+  .theme-snack-dark .name-of-PropertyAccessExpression {
+    color: #ffcf71;
+  }
+`;
 
 export type Annotation = {
   row: number,
@@ -54,6 +120,7 @@ type Props = {
     showSlider?: 'always' | 'mouseover',
     side?: 'right' | 'left',
   },
+  theme: 'snack-light' | 'snack-dark',
 };
 
 const models = new Map();
@@ -67,6 +134,7 @@ export default class Editor extends React.Component<Props> {
     minimap: {
       enabled: false,
     },
+    theme: 'snack-light',
   };
 
   static removePath(path: string) {
@@ -114,6 +182,9 @@ export default class Editor extends React.Component<Props> {
 
     this._openFile(path, value, language);
     this._phantom.contentWindow.addEventListener('resize', this._handleResize);
+
+    global.monaco = monaco;
+    global.editor = this._editor;
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -192,7 +263,9 @@ export default class Editor extends React.Component<Props> {
 
     this._subscription && this._subscription.dispose();
     this._subscription = this._editor.getModel().onDidChangeContent(() => {
-      this.props.onValueChange(this._editor.getModel().getValue());
+      const value = this._editor.getModel().getValue();
+
+      this.props.onValueChange(value);
       this._sytaxHighlight(path, value, language);
     });
 
@@ -261,6 +334,7 @@ export default class Editor extends React.Component<Props> {
           overflow: 'hidden',
         }}
       >
+        <Helmet style={[{ cssText }]} />
         <iframe
           ref={c => (this._phantom = c)}
           type="text/html"
@@ -278,6 +352,7 @@ export default class Editor extends React.Component<Props> {
         <div
           ref={c => (this._node = c)}
           style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
+          className={`theme-${this.props.theme}`}
         />
       </div>
     );
