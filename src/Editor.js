@@ -2,7 +2,6 @@
 
 import * as monaco from 'monaco-editor'; // eslint-disable-line import/no-unresolved
 import * as React from 'react';
-import { findDOMNode } from 'react-dom';
 import debounce from 'lodash/debounce';
 
 const WORKER_BASE_URL = 'http://localhost:3021';
@@ -156,6 +155,19 @@ export default class Editor extends React.Component<Props> {
     );
   }
 
+  clearSelection() {
+    const selection = this._editor.getSelection();
+
+    this._editor.setSelection(
+      new monaco.Selection(
+        selection.startLineNumber,
+        selection.startColumn,
+        selection.startLineNumber,
+        selection.startColumn
+      )
+    );
+  }
+
   _openFile = (path: string, value: string, language: Language) => {
     let model = models.get(path);
 
@@ -264,7 +276,7 @@ export default class Editor extends React.Component<Props> {
           }}
         />
         <div
-          ref={c => (this._node = findDOMNode(c))}
+          ref={c => (this._node = c)}
           style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
         />
       </div>
