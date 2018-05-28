@@ -192,9 +192,6 @@ export default class Editor extends React.Component<Props> {
 
     this._openFile(path, value, language);
     this._phantom.contentWindow.addEventListener('resize', this._handleResize);
-
-    global.monaco = monaco;
-    global.editor = this._editor;
   }
 
   componentDidUpdate(prevProps: Props) {

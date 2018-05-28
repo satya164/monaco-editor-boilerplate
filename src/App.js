@@ -82,11 +82,14 @@ export default class App extends React.Component<{}, State> {
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ width: 200, padding: '16px 0' }}>
+        <div
+          style={{ width: 180, borderRight: '1px solid rgba(0, 0, 0, .08)' }}
+        >
           {Object.keys(this.state.files).map(name => (
             <div
               key={name}
               style={{
+                fontSize: 14,
                 padding: '8px 24px',
                 backgroundColor:
                   this.state.current === name ? 'black' : 'transparent',
