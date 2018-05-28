@@ -2,8 +2,6 @@
 
 import * as React from 'react';
 import Editor, { type Annotation } from './Editor';
-import ESLint from './vendor/eslint.bundle';
-import config from './config/eslint.json';
 
 const code = `import React, { Component } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
@@ -54,7 +52,6 @@ type State = {
     [name: string]: string,
   },
   current: string,
-  annotations: Annotation[],
 };
 
 export default class App extends React.Component<{}, State> {
@@ -68,28 +65,12 @@ export default class App extends React.Component<{}, State> {
   };
 
   _handleValueChange = code =>
-    this.setState(state => {
-      const annotations = ESLint.verify(state.files[state.current], config).map(
-        err => ({
-          row: err.line,
-          column: err.column,
-          severity: err.message.toLowerCase().startsWith('parsing error')
-            ? 3
-            : err.severity + 1,
-          text: `${err.message} (${err.ruleId})`,
-          type: 'error',
-          source: 'ESLint',
-        })
-      );
-
-      return {
-        files: {
-          ...state.files,
-          [state.current]: code,
-        },
-        annotations,
-      };
-    });
+    this.setState(state => ({
+      files: {
+        ...state.files,
+        [state.current]: code,
+      },
+    }));
 
   render() {
     return (
@@ -123,7 +104,6 @@ export default class App extends React.Component<{}, State> {
           value={this.state.files[this.state.current]}
           onValueChange={this._handleValueChange}
           language="javascript"
-          annotations={this.state.annotations}
         />
       </div>
     );

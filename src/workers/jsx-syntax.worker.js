@@ -1,6 +1,8 @@
 /**
  * Credits to @CompuIves
  * https://github.com/CompuIves/codesandbox-client/blob/196301c919dd032dccc08cbeb48cf8722eadd36b/packages/app/src/app/components/CodeEditor/Monaco/workers/syntax-highlighter.js
+ *
+ * global ts
  */
 
 self.importScripts([
@@ -92,7 +94,6 @@ function addChildNodes(node, lines, classifications) {
   });
 }
 
-// Respond to message from parent thread
 self.addEventListener('message', event => {
   const { code, title, version } = event.data;
   try {

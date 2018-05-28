@@ -4,7 +4,7 @@ const webpack = require('webpack');
 const path = require('path');
 const { port } = require('./config.json');
 
-const entry = './src/index.js';
+const entry = './src/index';
 
 const common = {
   devtool: 'source-map',
@@ -78,12 +78,13 @@ module.exports = [
     target: 'webworker',
     entry: {
       // Language service workers
-      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
+      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker',
       'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
       'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
 
       // Custom workers
       'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
+      'eslint.worker': './src/workers/eslint.worker',
     },
   },
 ];

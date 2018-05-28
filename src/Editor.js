@@ -10,24 +10,38 @@ import config from '../config.json';
 
 const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
 
+const getWorkerURL = (name, header?: string) =>
+  `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+    ${header || ''}
+
+    importScripts('${WORKER_BASE_URL}/${name}.worker.bundle.js');
+  `)}`;
+
+const setupWorker = (name, callback) => {
+  const worker = new Worker(getWorkerURL(name));
+
+  worker.addEventListener('message', ({ data }: any) => callback(data));
+
+  return worker;
+};
+
 global.MonacoEnvironment = {
   getWorkerUrl(moduleId, label) {
     const workers = {
-      json: 'json.worker.bundle.js',
-      css: 'css.worker.bundle.js',
-      html: 'html.worker.bundle.js',
-      typescript: 'ts.worker.bundle.js',
-      javascript: 'ts.worker.bundle.js',
-      default: 'editor.worker.bundle.js',
+      json: 'json',
+      css: 'css',
+      html: 'html',
+      typescript: 'ts',
+      javascript: 'ts',
+      default: 'editor',
     };
 
-    return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
-      self.MonacoEnvironment = {
+    return getWorkerURL(
+      workers[label] || workers.default,
+      `self.MonacoEnvironment = {
         baseUrl: '${WORKER_BASE_URL}'
-      };
-
-      importScripts('${WORKER_BASE_URL}/${workers[label] || workers.default}');
-    `)}`;
+      };`
+    );
   },
 };
 
@@ -94,22 +108,12 @@ const cssText = `
   }
 `;
 
-export type Annotation = {
-  row: number,
-  column: number,
-  severity: number,
-  text: string,
-  type: 'error',
-  source: string,
-};
-
 type Language = 'json' | 'css' | 'html' | 'typescript' | 'javascript';
 
 type Props = {
   path: string,
   value: string,
   onValueChange: (value: string) => mixed,
-  annotations: Annotation[],
   language: Language,
   lineNumbers?: 'on' | 'off',
   wordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded',
@@ -160,18 +164,14 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidMount() {
-    this._syntaxWorker = new Worker(
-      `data:text/javascript;charset=utf-8,${encodeURIComponent(
-        `importScripts('${WORKER_BASE_URL}/jsx-syntax.worker.bundle.js');`
-      )}`
-    );
+    this._syntaxWorker = setupWorker('jsx-syntax', this._updateDecorations);
+    this._linterWorker = setupWorker('eslint', this._updateMarkers);
 
     this._syntaxWorker.addEventListener('message', ({ data }: any) =>
       this._updateDecorations(data)
     );
 
-    // eslint-disable-next-line no-unused-vars
-    const { path, annotations, value, language, ...rest } = this.props;
+    const { path, value, language, ...rest } = this.props;
 
     this._editor = monaco.editor.create(this._node, rest);
     this._editor.onDidChangeCursorSelection(selectionChange => {
@@ -189,7 +189,7 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    const { path, annotations, value, language, ...rest } = this.props;
+    const { path, value, language, ...rest } = this.props;
 
     this._editor.updateOptions(rest);
 
@@ -198,22 +198,6 @@ export default class Editor extends React.Component<Props> {
     } else if (value !== this._editor.getModel().getValue()) {
       this._editor.getModel().setValue(value);
       this._sytaxHighlight(path, value, language);
-    }
-
-    if (annotations !== prevProps.annotations) {
-      monaco.editor.setModelMarkers(
-        this._editor.getModel(),
-        null,
-        annotations.map(annotation => ({
-          startLineNumber: annotation.row,
-          endLineNumber: annotation.row,
-          startColumn: annotation.column,
-          endColumn: annotation.column,
-          message: annotation.text,
-          severity: annotation.severity,
-          source: annotation.source,
-        }))
-      );
     }
   }
 
@@ -267,13 +251,28 @@ export default class Editor extends React.Component<Props> {
       const value = this._editor.getModel().getValue();
 
       this.props.onValueChange(value);
-      this._sytaxHighlight(path, value, language);
+      this._sytaxHighlight(value, language, path);
+      this._lintCode(value, language);
     });
 
-    this._sytaxHighlight(path, value, language);
+    this._sytaxHighlight(value, language, path);
+    this._lintCode(value, language);
   };
 
-  _sytaxHighlight = (path, code, language) => {
+  _lintCode = (code, language) => {
+    const model = this._editor.getModel();
+
+    if (language === 'javascript') {
+      this._linterWorker.postMessage({
+        code,
+        version: model.getVersionId(),
+      });
+    } else {
+      monaco.editor.setModelMarkers(model, 'eslint', []);
+    }
+  };
+
+  _sytaxHighlight = (code, language, path) => {
     if (language === 'typescript' || language === 'javascript') {
       this._syntaxWorker.postMessage({
         code,
@@ -314,12 +313,23 @@ export default class Editor extends React.Component<Props> {
     });
   };
 
+  _updateMarkers = ({ markers, version }: any) => {
+    requestAnimationFrame(() => {
+      const model = this._editor.getModel();
+
+      if (model && model.getVersionId() === version) {
+        monaco.editor.setModelMarkers(model, 'eslint', markers);
+      }
+    });
+  };
+
   _handleResize = debounce(() => this._editor.layout(), 100, {
     leading: true,
     trailing: true,
   });
 
   _syntaxWorker: Worker;
+  _linterWorker: Worker;
   _subscription: any;
   _editor: any;
   _phantom: any;
