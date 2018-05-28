@@ -9,14 +9,11 @@
     "url": "git://github.com/satya164/react-boilerplate.git"
   },
   "scripts": {
-    "start": "concurrently 'serve --port 3021 dist/workers' 'webpack-dev-server --config webpack/client.config.js'",
-    "prestart": "webpack --config webpack/worker.config.js",
+    "start": "node index",
     "flow": "flow",
     "lint": "eslint .",
-    "build:client": "webpack -p --env.NODE_ENV production --config webpack/client.config.js",
-    "build:worker": "webpack -p --env.NODE_ENV production --config webpack/worker.config.js",
-    "build": "yarn build:client && yarn build:worker",
-    "prebuild": "del dist && del workers"
+    "build": "webpack -p --env.NODE_ENV production",
+    "prebuild": "del dist"
   },
   "author": "Satyajit Sahoo <satyajit.happy@gmail.com> (https://github.com/satya164/)",
   "license": "MIT",
@@ -35,7 +32,6 @@
     "del-cli": "^1.1.0",
     "eslint": "^4.19.1",
     "eslint-config-satya164": "^1.0.2",
-    "file-loader": "^1.1.11",
     "flow-bin": "^0.73.0",
     "identity-obj-proxy": "^3.0.0",
     "prettier": "^1.12.1",
@@ -44,7 +40,6 @@
     "redbox-react": "^1.6.0",
     "serve": "^6.5.8",
     "style-loader": "^0.21.0",
-    "url-loader": "^1.0.1",
     "webpack": "^3.11.0",
     "webpack-dev-server": "^2.11.1"
   },

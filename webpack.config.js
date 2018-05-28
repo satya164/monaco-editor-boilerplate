@@ -2,28 +2,20 @@
 
 const webpack = require('webpack');
 const path = require('path');
+const { port } = require('./config.json');
 
-const PORT = 3000;
-const entry = ['./src/index.js'];
+const entry = './src/index.js';
 
-module.exports = (env = { NODE_ENV: 'development' }) => ({
+const common = {
   devtool: 'source-map',
-  entry:
-    env.NODE_ENV === 'production'
-      ? entry
-      : [
-          `webpack-dev-server/client?http://localhost:${PORT}`,
-          'webpack/hot/only-dev-server',
-          ...entry,
-        ],
   output: {
     path: path.resolve(__dirname, '..', 'dist'),
     publicPath: '/dist/',
-    filename: 'app.bundle.js',
+    filename: '[name].bundle.js',
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env': { NODE_ENV: JSON.stringify(env.NODE_ENV) },
+      'process.env': { NODE_ENV: JSON.stringify(process.env.NODE_ENV) },
     }),
     // Ignore require() calls in vs/language/typescript/lib/typescriptServices.js
     new webpack.IgnorePlugin(
@@ -32,10 +24,10 @@ module.exports = (env = { NODE_ENV: 'development' }) => ({
     ),
     new webpack.ContextReplacementPlugin(
       /monaco-editor(\\|\/)esm(\\|\/)vs(\\|\/)editor(\\|\/)common(\\|\/)services/,
-      path.join(__dirname, '..')
+      __dirname
     ),
   ].concat(
-    env.NODE_ENV === 'production'
+    process.env.NODE_ENV === 'production'
       ? [
           new webpack.LoaderOptionsPlugin({ minimize: true, debug: false }),
           new webpack.optimize.UglifyJsPlugin({
@@ -60,18 +52,38 @@ module.exports = (env = { NODE_ENV: 'development' }) => ({
         },
       },
       {
-        test: /\.(bmp|gif|jpg|jpeg|png|svg|webp|ttf|otf)$/,
-        use: { loader: 'url-loader', options: { limit: 25000 } },
-      },
-      {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
       },
     ],
   },
-  devServer: {
-    contentBase: 'static/',
-    hot: true,
-    port: PORT,
+};
+
+module.exports = [
+  {
+    ...common,
+    entry: {
+      app:
+        process.env.NODE_ENV === 'production'
+          ? entry
+          : [
+              `webpack-dev-server/client?http://localhost:${port}`,
+              'webpack/hot/only-dev-server',
+              entry,
+            ],
+    },
   },
-});
+  {
+    ...common,
+    target: 'webworker',
+    entry: {
+      // Language service workers
+      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
+      'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
+      'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
+
+      // Custom workers
+      'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
+    },
+  },
+];

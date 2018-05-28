@@ -6,8 +6,9 @@ import Helmet from 'react-helmet';
 import debounce from 'lodash/debounce';
 import light from './themes/light';
 import dark from './themes/dark';
+import config from '../config.json';
 
-const WORKER_BASE_URL = 'http://localhost:3021';
+const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
 
 global.MonacoEnvironment = {
   getWorkerUrl(moduleId, label) {
