@@ -3,6 +3,7 @@
 import * as monaco from 'monaco-editor'; // eslint-disable-line import/no-unresolved
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
+import debounce from 'lodash/debounce';
 
 const WORKER_BASE_URL = 'http://localhost:3021';
 
@@ -45,6 +46,7 @@ type Props = {
   annotations: Annotation[],
   language: Language,
   lineNumbers?: 'on' | 'off',
+  wordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded',
   scrollBeyondLastLine?: boolean,
   minimap?: {
     enabled?: boolean,
@@ -61,6 +63,7 @@ const selections = new Map();
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
     lineNumbers: 'on',
+    wordWrap: 'on',
     scrollBeyondLastLine: false,
     minimap: {
       enabled: false,
@@ -111,6 +114,7 @@ export default class Editor extends React.Component<Props> {
     });
 
     this._openFile(path, value, language);
+    this._phantom.contentWindow.addEventListener('resize', this._handleResize);
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -146,6 +150,10 @@ export default class Editor extends React.Component<Props> {
     this._subscription && this._subscription.dispose();
     this._editor.dispose();
     this._syntaxWorker.terminate();
+    this._phantom.contentWindow.removeEventListener(
+      'resize',
+      this._handleResize
+    );
   }
 
   _openFile = (path: string, value: string, language: Language) => {
@@ -193,7 +201,7 @@ export default class Editor extends React.Component<Props> {
     requestAnimationFrame(() => {
       const model = this._editor.getModel();
 
-      if (model) {
+      if (model && model.getVersionId() === version) {
         const decorations = classifications.map(classification => ({
           range: new monaco.Range(
             classification.startLine,
@@ -220,17 +228,46 @@ export default class Editor extends React.Component<Props> {
     });
   };
 
+  _handleResize = debounce(() => this._editor.layout(), 100, {
+    leading: true,
+    trailing: true,
+  });
+
   _syntaxWorker: Worker;
   _subscription: any;
   _editor: any;
+  _phantom: any;
   _node: any;
 
   render() {
     return (
       <div
-        ref={c => (this._node = findDOMNode(c))}
-        style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
-      />
+        style={{
+          display: 'flex',
+          flex: 1,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <iframe
+          ref={c => (this._phantom = c)}
+          type="text/html"
+          style={{
+            display: 'block',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            height: '100%',
+            width: '100%',
+            pointerEvents: 'none',
+            opacity: 0,
+          }}
+        />
+        <div
+          ref={c => (this._node = findDOMNode(c))}
+          style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
+        />
+      </div>
     );
   }
 }
