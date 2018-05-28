@@ -10,12 +10,21 @@ import config from '../config.json';
 
 const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
 
-const getWorkerURL = (name, header?: string) =>
-  `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+const getWorkerURL = (name, header?: string) => {
+  const code = `
     ${header || ''}
 
     importScripts('${WORKER_BASE_URL}/${name}.worker.bundle.js');
-  `)}`;
+  `;
+
+  if ('Blob' in window) {
+    return URL.createObjectURL(
+      new Blob([code], { type: 'application/javascript' })
+    );
+  } else {
+    return `data:text/javascript;charset=utf-8,${encodeURIComponent(code)}`;
+  }
+};
 
 const setupWorker = (name, callback) => {
   const worker = new Worker(getWorkerURL(name));
@@ -203,12 +212,13 @@ export default class Editor extends React.Component<Props> {
 
   componentWillUnmount() {
     this._subscription && this._subscription.dispose();
-    this._editor.dispose();
-    this._syntaxWorker.terminate();
-    this._phantom.contentWindow.removeEventListener(
-      'resize',
-      this._handleResize
-    );
+    this._editor && this._editor.dispose();
+    this._syntaxWorker && this._syntaxWorker.terminate();
+    this._phantom &&
+      this._phantom.contentWindow.removeEventListener(
+        'resize',
+        this._handleResize
+      );
   }
 
   clearSelection() {
