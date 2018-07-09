@@ -9,45 +9,38 @@
     "url": "git://github.com/satya164/react-boilerplate.git"
   },
   "scripts": {
-    "start": "node index",
+    "start": "cross-env NODE_ENV=development webpack-serve",
     "flow": "flow",
     "lint": "eslint .",
-    "build": "webpack -p --env.NODE_ENV production",
+    "build": "cross-env NODE_ENV=production webpack -p",
     "prebuild": "del dist"
   },
   "author": "Satyajit Sahoo <satyajit.happy@gmail.com> (https://github.com/satya164/)",
   "license": "MIT",
   "devDependencies": {
     "babel-core": "^6.26.3",
-    "babel-eslint": "^8.2.3",
-    "babel-loader": "^7.1.4",
-    "babel-plugin-transform-react-constant-elements": "^6.23.0",
-    "babel-plugin-transform-react-inline-elements": "^6.22.0",
+    "babel-eslint": "^8.2.5",
+    "babel-loader": "^7.1.5",
     "babel-preset-env": "^1.7.0",
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-2": "^6.24.1",
-    "concurrently": "^3.5.1",
-    "cross-env": "^5.1.6",
-    "css-loader": "^0.28.11",
+    "cross-env": "^5.2.0",
+    "css-loader": "^1.0.0",
     "del-cli": "^1.1.0",
-    "eslint": "^4.19.1",
+    "eslint": "^5.1.0",
     "eslint-config-satya164": "^1.0.2",
-    "flow-bin": "^0.73.0",
-    "identity-obj-proxy": "^3.0.0",
-    "prettier": "^1.12.1",
-    "react-transform-catch-errors": "^1.0.2",
-    "react-transform-hmr": "^1.0.4",
-    "redbox-react": "^1.6.0",
-    "serve": "^6.5.8",
+    "flow-bin": "^0.76.0",
+    "mini-css-extract-plugin": "^0.4.1",
+    "prettier": "^1.13.7",
     "style-loader": "^0.21.0",
-    "webpack": "^3.11.0",
-    "webpack-dev-server": "^2.11.1"
+    "webpack": "^4.15.1",
+    "webpack-command": "^0.4.1",
+    "webpack-serve": "^1.0.4"
   },
   "dependencies": {
     "lodash": "^4.17.10",
     "monaco-editor": "^0.13.1",
-    "react": "^16.4.0",
-    "react-dom": "^16.4.0",
-    "react-helmet": "^5.2.0"
+    "react": "^16.4.1",
+    "react-dom": "^16.4.1"
   }
 }

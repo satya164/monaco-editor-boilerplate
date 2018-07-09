@@ -1,0 +1,57 @@
+/* Common overrides */
+.monaco-editor .line-numbers {
+  color: currentColor;
+  opacity: .5;
+}
+
+/* Light theme overrides */
+.theme-snack-light .JsxText {
+  color: #5c6773;
+}
+
+.theme-snack-light .JsxSelfClosingElement,
+.theme-snack-light .JsxOpeningElement,
+.theme-snack-light .JsxClosingElement,
+.theme-snack-light .tagName-of-JsxOpeningElement,
+.theme-snack-light .tagName-of-JsxClosingElement,
+.theme-snack-light .tagName-of-JsxSelfClosingElement {
+  color: #41a6d9;
+}
+
+.theme-snack-light .name-of-JsxAttribute {
+  color: #f08c36;
+}
+
+.theme-snack-light .name-of-PropertyAssignment {
+  color: #86b300;
+}
+
+.theme-snack-light .name-of-PropertyAccessExpression {
+  color: #f08c36;
+}
+
+/* Dark theme overrides */
+.theme-snack-dark .JsxText {
+  color: #d9d7ce;
+}
+
+.theme-snack-dark .JsxSelfClosingElement,
+.theme-snack-dark .JsxOpeningElement,
+.theme-snack-dark .JsxClosingElement,
+.theme-snack-dark .tagName-of-JsxOpeningElement,
+.theme-snack-dark .tagName-of-JsxClosingElement,
+.theme-snack-dark .tagName-of-JsxSelfClosingElement {
+  color: #5ccfe6;
+}
+
+.theme-snack-dark .name-of-JsxAttribute {
+  color: #ffcf71;
+}
+
+.theme-snack-dark .name-of-PropertyAssignment {
+  color: #bae67e;
+}
+
+.theme-snack-dark .name-of-PropertyAccessExpression {
+  color: #ffcf71;
+}

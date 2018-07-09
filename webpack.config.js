@@ -2,15 +2,29 @@
 
 const webpack = require('webpack');
 const path = require('path');
-const { port } = require('./config.json');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { dev } = require('./serve.config');
 
-const entry = './src/index';
-
-const common = {
+module.exports = {
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   devtool: 'source-map',
+  entry: {
+    // Main bundle
+    app: './src/index',
+
+    // Language service workers
+    'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker',
+    'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
+    'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
+
+    // Custom workers
+    'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
+    'eslint.worker': './src/workers/eslint.worker',
+  },
   output: {
-    path: path.resolve(__dirname, '..', 'dist'),
-    publicPath: '/dist/',
+    globalObject: 'self',
+    path: path.resolve(__dirname, 'dist'),
+    publicPath: dev.publicPath,
     filename: '[name].bundle.js',
   },
   plugins: [
@@ -29,12 +43,13 @@ const common = {
   ].concat(
     process.env.NODE_ENV === 'production'
       ? [
-          new webpack.LoaderOptionsPlugin({ minimize: true, debug: false }),
-          new webpack.optimize.UglifyJsPlugin({
-            compress: { warnings: false },
-            sourceMap: true,
+          new webpack.LoaderOptionsPlugin({
+            minimize: true,
+            debug: false,
           }),
-          new webpack.optimize.ModuleConcatenationPlugin(),
+          new MiniCssExtractPlugin({
+            filename: 'styles.css',
+          }),
         ]
       : [
           new webpack.HotModuleReplacementPlugin(),
@@ -53,38 +68,11 @@ const common = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader'],
+        use:
+          process.env.NODE_ENV === 'production'
+            ? [MiniCssExtractPlugin.loader, 'css-loader']
+            : ['style-loader', 'css-loader'],
       },
     ],
   },
 };
-
-module.exports = [
-  {
-    ...common,
-    entry: {
-      app:
-        process.env.NODE_ENV === 'production'
-          ? entry
-          : [
-              `webpack-dev-server/client?http://localhost:${port}`,
-              'webpack/hot/only-dev-server',
-              entry,
-            ],
-    },
-  },
-  {
-    ...common,
-    target: 'webworker',
-    entry: {
-      // Language service workers
-      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker',
-      'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
-      'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
-
-      // Custom workers
-      'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
-      'eslint.worker': './src/workers/eslint.worker',
-    },
-  },
-];

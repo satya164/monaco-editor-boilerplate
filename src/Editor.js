@@ -2,11 +2,11 @@
 
 import * as monaco from 'monaco-editor'; // eslint-disable-line import/no-unresolved
 import * as React from 'react';
-import Helmet from 'react-helmet';
 import debounce from 'lodash/debounce';
 import light from './themes/light';
 import dark from './themes/dark';
-import config from '../config.json';
+import config from '../serve.config';
+import './Editor.css';
 
 const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
 
@@ -56,66 +56,6 @@ global.MonacoEnvironment = {
 
 monaco.editor.defineTheme('snack-light', light);
 monaco.editor.defineTheme('snack-dark', dark);
-
-const cssText = `
-  /* Common overrides */
-  .monaco-editor .line-numbers {
-    color: currentColor;
-    opacity: .5;
-  }
-
-  /* Light theme overrides */
-  .theme-snack-light .JsxText {
-    color: ${light.colors['editor.foreground']};
-  }
-
-  .theme-snack-light .JsxSelfClosingElement,
-  .theme-snack-light .JsxOpeningElement,
-  .theme-snack-light .JsxClosingElement,
-  .theme-snack-light .tagName-of-JsxOpeningElement,
-  .theme-snack-light .tagName-of-JsxClosingElement,
-  .theme-snack-light .tagName-of-JsxSelfClosingElement {
-    color: #41a6d9;
-  }
-
-  .theme-snack-light .name-of-JsxAttribute {
-    color: #f08c36;
-  }
-
-  .theme-snack-light .name-of-PropertyAssignment {
-    color: #86b300;
-  }
-
-  .theme-snack-light .name-of-PropertyAccessExpression {
-    color: #f08c36;
-  }
-
-  /* Dark theme overrides */
-  .theme-snack-dark .JsxText {
-    color: ${dark.colors['editor.foreground']};
-  }
-
-  .theme-snack-dark .JsxSelfClosingElement,
-  .theme-snack-dark .JsxOpeningElement,
-  .theme-snack-dark .JsxClosingElement,
-  .theme-snack-dark .tagName-of-JsxOpeningElement,
-  .theme-snack-dark .tagName-of-JsxClosingElement,
-  .theme-snack-dark .tagName-of-JsxSelfClosingElement {
-    color: #5ccfe6;
-  }
-
-  .theme-snack-dark .name-of-JsxAttribute {
-    color: #ffcf71;
-  }
-
-  .theme-snack-dark .name-of-PropertyAssignment {
-    color: #bae67e;
-  }
-
-  .theme-snack-dark .name-of-PropertyAccessExpression {
-    color: #ffcf71;
-  }
-`;
 
 type Language = 'json' | 'css' | 'html' | 'typescript' | 'javascript';
 
@@ -352,7 +292,6 @@ export default class Editor extends React.Component<Props> {
           overflow: 'hidden',
         }}
       >
-        <Helmet style={[{ cssText }]} />
         <iframe
           ref={c => (this._phantom = c)}
           type="text/html"

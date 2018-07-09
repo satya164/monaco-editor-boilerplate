@@ -1,7 +1,7 @@
 /* @flow */
 
 import * as React from 'react';
-import Editor, { type Annotation } from './Editor';
+import Editor from './Editor';
 
 const code = `import React, { Component } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
@@ -61,7 +61,6 @@ export default class App extends React.Component<{}, State> {
       'Stuff.js': '',
     },
     current: 'App.js',
-    annotations: [],
   };
 
   _handleValueChange = code =>
