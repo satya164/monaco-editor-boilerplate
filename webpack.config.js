@@ -37,8 +37,7 @@ module.exports = {
       /vs(\/|\\)language(\/|\\)typescript(\/|\\)lib/
     ),
     new webpack.ContextReplacementPlugin(
-      /monaco-editor(\\|\/)esm(\\|\/)vs(\\|\/)editor(\\|\/)common(\\|\/)services/,
-      __dirname
+      /monaco-editor(\\|\/)esm(\\|\/)vs(\\|\/)editor(\\|\/)common(\\|\/)services/
     ),
   ].concat(
     process.env.NODE_ENV === 'production'

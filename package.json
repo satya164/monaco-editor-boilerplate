@@ -27,19 +27,21 @@
     "cross-env": "^5.2.0",
     "css-loader": "^1.0.0",
     "del-cli": "^1.1.0",
-    "eslint": "^5.1.0",
+    "eslint": "^4.19.1",
     "eslint-config-satya164": "^1.0.2",
     "flow-bin": "^0.76.0",
     "mini-css-extract-plugin": "^0.4.1",
-    "prettier": "^1.13.7",
     "style-loader": "^0.21.0",
     "webpack": "^4.15.1",
     "webpack-command": "^0.4.1",
     "webpack-serve": "^1.0.4"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
+    "dedent": "^0.7.0",
     "lodash": "^4.17.10",
     "monaco-editor": "^0.13.1",
+    "prettier": "^1.13.7",
     "react": "^16.4.1",
     "react-dom": "^16.4.1"
   }

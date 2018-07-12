@@ -1,51 +1,82 @@
 /* @flow */
 
+import 'babel-polyfill';
 import * as React from 'react';
+import dedent from 'dedent';
 import Editor from './Editor';
 
-const code = `import React, { Component } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
-import { Constants } from 'expo';
+const files = {
+  'App.js': dedent`import React, { Component } from 'react';
+  import { Text, View, StyleSheet } from 'react-native';
+  import { Constants } from 'expo';
+  import AssetExample from './AssetExample';
 
-// You can import from local files
-import AssetExample from './components/AssetExample';
-
-// or any pure javascript modules available in npm
-import { Card } from 'react-native-elements'; // Version can be specified in package.json
-
-export default class App extends Component {
-  render() {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.paragraph}>
-          Change code in the editor and watch it change on your phone!
-          Save to get a shareable url.
-        </Text>
-        <Card title="Local Modules">
+  export default class App extends Component {
+    render() {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.paragraph}>
+            Change code in the editor and watch it change on your phone!
+            Save to get a shareable url.
+          </Text>
           <AssetExample />
-        </Card>
-      </View>
-    );
+        </View>
+      );
+    }
   }
-}
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: Constants.statusBarHeight,
-    backgroundColor: '#ecf0f1',
-  },
-  paragraph: {
-    margin: 24,
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#34495e',
-  },
-});
-`;
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: Constants.statusBarHeight,
+      backgroundColor: '#ecf0f1',
+    },
+    paragraph: {
+      margin: 24,
+      fontSize: 18,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: '#34495e',
+    },
+  });`,
+  'AssetExample.js': dedent`import React, { Component } from 'react';
+  import { Text, View, StyleSheet, Image } from 'react-native';
+
+  export default class AssetExample extends Component {
+    render() {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.paragraph}>
+            Local files and assets can be imported by dragging and dropping them into the editor
+          </Text>
+          <Image style={styles.logo} source={require("../assets/expo.symbol.white.png")}/>
+        </View>
+      );
+    }
+  }
+
+  const styles = StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    paragraph: {
+      margin: 24,
+      marginTop: 0,
+      fontSize: 14,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: '#34495e',
+    },
+    logo: {
+      backgroundColor: "#056ecf",
+      height: 128,
+      width: 128,
+    }
+  });`,
+};
 
 type State = {
   files: {
@@ -56,10 +87,7 @@ type State = {
 
 export default class App extends React.Component<{}, State> {
   state = {
-    files: {
-      'App.js': code,
-      'Stuff.js': '',
-    },
+    files,
     current: 'App.js',
   };
 
@@ -70,6 +98,8 @@ export default class App extends React.Component<{}, State> {
         [state.current]: code,
       },
     }));
+
+  _handleOpenPath = path => this.setState({ current: path });
 
   render() {
     return (
@@ -95,17 +125,18 @@ export default class App extends React.Component<{}, State> {
                 color: this.state.current === name ? 'white' : 'black',
                 cursor: 'pointer',
               }}
-              onClick={() => this.setState({ current: name })}
+              onClick={() => this._handleOpenPath(name)}
             >
               {name}
             </div>
           ))}
         </div>
         <Editor
+          files={this.state.files}
           path={this.state.current}
           value={this.state.files[this.state.current]}
+          onOpenPath={this._handleOpenPath}
           onValueChange={this._handleValueChange}
-          language="javascript"
         />
       </div>
     );

@@ -1,6 +1,9 @@
 /* @flow */
 
-import * as monaco from 'monaco-editor'; // eslint-disable-line import/no-unresolved
+import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
+import 'monaco-editor/esm/vs/language/json/monaco.contribution';
+import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main';
+import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
 import light from './themes/light';
@@ -8,26 +11,23 @@ import dark from './themes/dark';
 import config from '../serve.config';
 import './Editor.css';
 
-const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
-
-const getWorkerURL = (name, header?: string) => {
-  const code = `
-    ${header || ''}
-
-    importScripts('${WORKER_BASE_URL}/${name}.worker.bundle.js');
-  `;
-
-  if ('Blob' in window) {
-    return URL.createObjectURL(
-      new Blob([code], { type: 'application/javascript' })
-    );
-  } else {
-    return `data:text/javascript;charset=utf-8,${encodeURIComponent(code)}`;
-  }
+/**
+ * Monkeypatch to make 'Find All References' work across multiple files
+ * https://github.com/Microsoft/monaco-editor/issues/779#issuecomment-374258435
+ */
+SimpleEditorModelResolverService.prototype.findModel = function(
+  editor,
+  resource
+) {
+  return monaco.editor
+    .getModels()
+    .find(model => model.uri.toString() === resource.toString());
 };
 
+const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
+
 const setupWorker = (name, callback) => {
-  const worker = new Worker(getWorkerURL(name));
+  const worker = new Worker(`${WORKER_BASE_URL}/${name}.worker.bundle.js`);
 
   worker.addEventListener('message', ({ data }: any) => callback(data));
 
@@ -45,25 +45,46 @@ global.MonacoEnvironment = {
       default: 'editor',
     };
 
-    return getWorkerURL(
-      workers[label] || workers.default,
-      `self.MonacoEnvironment = {
-        baseUrl: '${WORKER_BASE_URL}'
-      };`
-    );
+    return `${WORKER_BASE_URL}/${workers[label] ||
+      workers.default}.worker.bundle.js`;
   },
 };
 
-monaco.editor.defineTheme('snack-light', light);
-monaco.editor.defineTheme('snack-dark', dark);
+monaco.editor.defineTheme('ayu-light', light);
+monaco.editor.defineTheme('ayu-dark', dark);
 
-type Language = 'json' | 'css' | 'html' | 'typescript' | 'javascript';
+monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+
+monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+  noSemanticValidation: true,
+  noSyntaxValidation: true,
+});
+
+monaco.languages.registerDocumentFormattingEditProvider('javascript', {
+  async provideDocumentFormattingEdits(model) {
+    const prettier = await import('prettier/standalone');
+    const babylon = await import('prettier/parser-babylon');
+    const text = prettier.format(model.getValue(), {
+      parser: 'babylon',
+      plugins: [babylon],
+      singleQuote: true,
+    });
+
+    return [
+      {
+        range: model.getFullModelRange(),
+        text,
+      },
+    ];
+  },
+});
 
 type Props = {
+  files: { [path: string]: string },
   path: string,
   value: string,
+  onOpenPath: (path: string) => mixed,
   onValueChange: (value: string) => mixed,
-  language: Language,
   lineNumbers?: 'on' | 'off',
   wordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded',
   scrollBeyondLastLine?: boolean,
@@ -74,11 +95,10 @@ type Props = {
     showSlider?: 'always' | 'mouseover',
     side?: 'right' | 'left',
   },
-  theme: 'snack-light' | 'snack-dark',
+  theme: 'ayu-light' | 'ayu-dark',
 };
 
-const models = new Map();
-const selections = new Map();
+const editorStates = new Map();
 
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
@@ -88,62 +108,89 @@ export default class Editor extends React.Component<Props> {
     minimap: {
       enabled: false,
     },
-    theme: 'snack-light',
+    theme: 'ayu-light',
   };
 
   static removePath(path: string) {
-    const model = models.get(path);
+    // Remove editor states
+    editorStates.delete(path);
+
+    // Remove associated models
+    const model = monaco.editor
+      .getModels()
+      .find(model => model.uri.path === path);
 
     model && model.dispose();
-    models.delete(path);
-
-    selections.delete(path);
   }
 
-  static renamePath(prevPath: string, nextPath: string) {
-    const model = models.get(prevPath);
+  static renamePath(oldPath: string, newPath: string) {
+    const selection = editorStates.get(oldPath);
 
-    models.delete(prevPath);
-    models.set(nextPath, model);
+    editorStates.delete(oldPath);
+    editorStates.set(newPath, selection);
 
-    const selection = selections.get(prevPath);
-
-    selections.delete(prevPath);
-    selections.set(nextPath, selection);
+    this.removePath(oldPath);
   }
 
   componentDidMount() {
     this._syntaxWorker = setupWorker('jsx-syntax', this._updateDecorations);
     this._linterWorker = setupWorker('eslint', this._updateMarkers);
 
-    this._syntaxWorker.addEventListener('message', ({ data }: any) =>
-      this._updateDecorations(data)
-    );
+    const { path, value, ...rest } = this.props;
 
-    const { path, value, language, ...rest } = this.props;
+    this._editor = monaco.editor.create(this._node, rest, {
+      editorService: {
+        openEditor: ({ resource, options }) => {
+          // Open the file with this path
+          // This should set the model with the path and value
+          this.props.onOpenPath(resource.path);
 
-    this._editor = monaco.editor.create(this._node, rest);
-    this._editor.onDidChangeCursorSelection(selectionChange => {
-      selections.set(this.props.path, {
-        selection: selectionChange.selection,
-        secondarySelections: selectionChange.secondarySelections,
-      });
+          // Move cursor to the desired position
+          this._editor.setSelection(options.selection);
+
+          // Scroll the editor to bring the desired line into focus
+          this._editor.revealLine(options.selection.startLineNumber);
+
+          return Promise.resolve({
+            getControl: () => this._editor,
+          });
+        },
+      },
     });
 
-    this._openFile(path, value, language);
+    Object.keys(this.props.files).forEach(path =>
+      this._initializeFile(path, this.props.files[path])
+    );
+
+    this._openFile(path, value);
     this._phantom.contentWindow.addEventListener('resize', this._handleResize);
   }
 
   componentDidUpdate(prevProps: Props) {
-    const { path, value, language, ...rest } = this.props;
+    const { path, value, ...rest } = this.props;
 
     this._editor.updateOptions(rest);
 
     if (path !== prevProps.path) {
-      this._openFile(path, value, language);
+      editorStates.set(prevProps.path, this._editor.saveViewState());
+
+      this._openFile(path, value);
     } else if (value !== this._editor.getModel().getValue()) {
-      this._editor.getModel().setValue(value);
-      this._sytaxHighlight(path, value, language);
+      const model = this._editor.getModel();
+
+      if (value !== model.getValue()) {
+        model.pushEditOperations(
+          [],
+          [
+            {
+              range: model.getFullModelRange(),
+              text: value,
+            },
+          ]
+        );
+      }
+
+      this._syntaxHighlight(path, value);
     }
   }
 
@@ -171,62 +218,85 @@ export default class Editor extends React.Component<Props> {
     );
   }
 
-  _openFile = (path: string, value: string, language: Language) => {
-    let model = models.get(path);
+  _initializeFile = (path: string, value: string) => {
+    let model = monaco.editor
+      .getModels()
+      .find(model => model.uri.path === path);
 
-    if (!model) {
-      model = monaco.editor.createModel(value, language, path);
-      models.set(path, model);
+    if (model) {
+      // If a model exists, we need to update it's value
+      // This is needed because the content for the file might have been modified externally
+      // Use `pushEditOperations` instead of `setValue` or `applyEdits` to preserve undo stack
+      model.pushEditOperations(
+        [],
+        [
+          {
+            range: model.getFullModelRange(),
+            text: value,
+          },
+        ]
+      );
+    } else {
+      model = monaco.editor.createModel(
+        value,
+        'javascript',
+        new monaco.Uri().with({ path })
+      );
+      model.updateOptions({
+        tabSize: 2,
+        insertSpaces: true,
+      });
     }
+  };
+
+  _openFile = (path: string, value: string) => {
+    this._initializeFile(path, value);
+
+    const model = monaco.editor
+      .getModels()
+      .find(model => model.uri.path === path);
 
     this._editor.setModel(model);
 
-    const selection = selections.get(path);
+    // Restore the editor state for the file
+    const editorState = editorStates.get(path);
 
-    if (selection) {
-      this._editor.setSelection(selection.selection);
-
-      if (selection.secondarySelections.length) {
-        this._editor.setSelections(selection.secondarySelections);
-      }
+    if (editorState) {
+      this._editor.restoreViewState(editorState);
     }
 
     this._editor.focus();
 
+    // Subscribe to change in value so we can notify the parent
     this._subscription && this._subscription.dispose();
     this._subscription = this._editor.getModel().onDidChangeContent(() => {
       const value = this._editor.getModel().getValue();
 
       this.props.onValueChange(value);
-      this._sytaxHighlight(value, language, path);
-      this._lintCode(value, language);
+      this._syntaxHighlight(path, value);
+      this._lintCode(value);
     });
 
-    this._sytaxHighlight(value, language, path);
-    this._lintCode(value, language);
+    this._syntaxHighlight(path, value);
   };
 
-  _lintCode = (code, language) => {
+  _lintCode = code => {
     const model = this._editor.getModel();
 
-    if (language === 'javascript') {
-      this._linterWorker.postMessage({
-        code,
-        version: model.getVersionId(),
-      });
-    } else {
-      monaco.editor.setModelMarkers(model, 'eslint', []);
-    }
+    monaco.editor.setModelMarkers(model, 'eslint', []);
+
+    this._linterWorker.postMessage({
+      code,
+      version: model.getVersionId(),
+    });
   };
 
-  _sytaxHighlight = (code, language, path) => {
-    if (language === 'typescript' || language === 'javascript') {
-      this._syntaxWorker.postMessage({
-        code,
-        title: path,
-        version: this._editor.getModel().getVersionId(),
-      });
-    }
+  _syntaxHighlight = (path, code) => {
+    this._syntaxWorker.postMessage({
+      code,
+      title: path,
+      version: this._editor.getModel().getVersionId(),
+    });
   };
 
   _updateDecorations = ({ classifications, version }: any) => {
@@ -309,7 +379,7 @@ export default class Editor extends React.Component<Props> {
         <div
           ref={c => (this._node = c)}
           style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
-          className={`theme-${this.props.theme}`}
+          className={this.props.theme}
         />
       </div>
     );
