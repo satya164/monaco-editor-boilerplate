@@ -1,8 +1,6 @@
 /* @flow */
 
-import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
-import 'monaco-editor/esm/vs/language/json/monaco.contribution';
-import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.main';
 import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
@@ -133,26 +131,39 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidMount() {
-    this._syntaxWorker = setupWorker('jsx-syntax', this._updateDecorations);
     this._linterWorker = setupWorker('eslint', this._updateMarkers);
 
     const { path, value, ...rest } = this.props;
 
     this._editor = monaco.editor.create(this._node, rest, {
-      editorService: {
-        openEditor: ({ resource, options }) => {
+      codeEditorService: {
+        addCodeEditor: () => {},
+        removeCodeEditor: () => {},
+        listCodeEditors: () => [this._editor],
+
+        getFocusedCodeEditor: () => this._editor,
+
+        registerDecorationType: () => {},
+        removeDecorationType: () => {},
+        resolveDecorationOptions: () => {},
+
+        setTransientModelProperty: () => {},
+        getTransientModelProperty: () => {},
+
+        getActiveCodeEditor: () => this._editor,
+        openCodeEditor: async ({ resource, options }, editor) => {
           // Open the file with this path
           // This should set the model with the path and value
           this.props.onOpenPath(resource.path);
 
           // Move cursor to the desired position
-          this._editor.setSelection(options.selection);
+          editor.setSelection(options.selection);
 
           // Scroll the editor to bring the desired line into focus
-          this._editor.revealLine(options.selection.startLineNumber);
+          editor.revealLine(options.selection.startLineNumber);
 
           return Promise.resolve({
-            getControl: () => this._editor,
+            getControl: () => editor,
           });
         },
       },
@@ -189,15 +200,12 @@ export default class Editor extends React.Component<Props> {
           ]
         );
       }
-
-      this._syntaxHighlight(path, value);
     }
   }
 
   componentWillUnmount() {
     this._subscription && this._subscription.dispose();
     this._editor && this._editor.dispose();
-    this._syntaxWorker && this._syntaxWorker.terminate();
     this._phantom &&
       this._phantom.contentWindow.removeEventListener(
         'resize',
@@ -273,11 +281,8 @@ export default class Editor extends React.Component<Props> {
       const value = this._editor.getModel().getValue();
 
       this.props.onValueChange(value);
-      this._syntaxHighlight(path, value);
       this._lintCode(value);
     });
-
-    this._syntaxHighlight(path, value);
   };
 
   _lintCode = code => {
@@ -288,45 +293,6 @@ export default class Editor extends React.Component<Props> {
     this._linterWorker.postMessage({
       code,
       version: model.getVersionId(),
-    });
-  };
-
-  _syntaxHighlight = (path, code) => {
-    this._syntaxWorker.postMessage({
-      code,
-      title: path,
-      version: this._editor.getModel().getVersionId(),
-    });
-  };
-
-  _updateDecorations = ({ classifications, version }: any) => {
-    requestAnimationFrame(() => {
-      const model = this._editor.getModel();
-
-      if (model && model.getVersionId() === version) {
-        const decorations = classifications.map(classification => ({
-          range: new monaco.Range(
-            classification.startLine,
-            classification.start,
-            classification.endLine,
-            classification.end
-          ),
-          options: {
-            inlineClassName: classification.type
-              ? `${classification.kind} ${classification.type}-of-${
-                  classification.parentKind
-                }`
-              : classification.kind,
-          },
-        }));
-
-        const model = this._editor.getModel();
-
-        model.decorations = this._editor.deltaDecorations(
-          model.decorations || [],
-          decorations
-        );
-      }
     });
   };
 
@@ -345,7 +311,6 @@ export default class Editor extends React.Component<Props> {
     trailing: true,
   });
 
-  _syntaxWorker: Worker;
   _linterWorker: Worker;
   _subscription: any;
   _editor: any;

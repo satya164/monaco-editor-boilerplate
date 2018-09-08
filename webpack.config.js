@@ -3,7 +3,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { dev } = require('./serve.config');
+const { devMiddleware } = require('./serve.config');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -18,13 +18,12 @@ module.exports = {
     'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
 
     // Custom workers
-    'jsx-syntax.worker': './src/workers/jsx-syntax.worker',
     'eslint.worker': './src/workers/eslint.worker',
   },
   output: {
     globalObject: 'self',
     path: path.resolve(__dirname, 'dist'),
-    publicPath: dev.publicPath,
+    publicPath: devMiddleware.publicPath,
     filename: '[name].bundle.js',
   },
   plugins: [
@@ -50,11 +49,7 @@ module.exports = {
             filename: 'styles.css',
           }),
         ]
-      : [
-          new webpack.HotModuleReplacementPlugin(),
-          new webpack.NamedModulesPlugin(),
-          new webpack.NoEmitOnErrorsPlugin(),
-        ]
+      : [new webpack.NamedModulesPlugin(), new webpack.NoEmitOnErrorsPlugin()]
   ),
   module: {
     rules: [

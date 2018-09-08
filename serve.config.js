@@ -2,6 +2,5 @@
 
 module.exports = {
   port: 3000,
-  hot: true,
-  dev: { publicPath: '/dist/' },
+  devMiddleware: { publicPath: '/dist/' },
 };
