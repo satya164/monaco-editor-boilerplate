@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.main';
 import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
+import TypingsWorker from './workers/typings.worker';
 import ESLintWorker from './workers/eslint.worker';
 import light from './themes/light';
 import dark from './themes/dark';
@@ -48,13 +49,20 @@ global.MonacoEnvironment = {
 monaco.editor.defineTheme('ayu-light', light);
 monaco.editor.defineTheme('ayu-dark', dark);
 
-monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
-
+/**
+ * Disable typescript's diagnostics for JavaScript files.
+ * This suppresses errors when using Flow syntax.
+ * It's also unnecessary since we use ESLint for error checking.
+ */
 monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
   noSemanticValidation: true,
   noSyntaxValidation: true,
 });
 
+/**
+ * Use prettier to format JavaScript code.
+ * This will replace the default formatter.
+ */
 monaco.languages.registerDocumentFormattingEditProvider('javascript', {
   async provideDocumentFormattingEdits(model) {
     const prettier = await import('prettier/standalone');
@@ -73,6 +81,31 @@ monaco.languages.registerDocumentFormattingEditProvider('javascript', {
     ];
   },
 });
+
+/**
+ * Sync all the models to the worker eagerly.
+ * This enables intelliSense for all files without needing an `addExtraLib` call.
+ */
+monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
+monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+
+/**
+ * Configure the typescript compiler to detect JSX and load type definitions
+ */
+const compilerOptions = {
+  allowJs: true,
+  allowSyntheticDefaultImports: true,
+  alwaysStrict: true,
+  jsx: 'React',
+  jsxFactory: 'React.createElement',
+};
+
+monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+  compilerOptions
+);
+monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
+  compilerOptions
+);
 
 type Props = {
   files: { [path: string]: string },
@@ -93,7 +126,11 @@ type Props = {
   theme: 'ayu-light' | 'ayu-dark',
 };
 
+// Store editor states such as cursor position, selection and scroll position for each model
 const editorStates = new Map();
+
+// Store details about typings we have loaded
+const extraLibs = new Map();
 
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
@@ -128,9 +165,30 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidMount() {
+    // Intialize the linter
     this._linterWorker = new ESLintWorker();
     this._linterWorker.addEventListener('message', ({ data }: any) =>
       this._updateMarkers(data)
+    );
+
+    // Intialize the type definitions worker
+    this._typingsWorker = new TypingsWorker();
+    this._typingsWorker.addEventListener('message', ({ data }: any) =>
+      this._addTypings(data)
+    );
+
+    // Fetch some definitions
+    const dependencies = {
+      expo: '29.0.0',
+      react: '16.3.1',
+      'react-native': '0.55.4',
+    };
+
+    Object.keys(dependencies).forEach(name =>
+      this._typingsWorker.postMessage({
+        name,
+        version: dependencies[name],
+      })
     );
 
     const { path, value, ...rest } = this.props;
@@ -204,6 +262,8 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentWillUnmount() {
+    this._linterWorker && this._linterWorker.terminate();
+    this._typingsWorker && this._typingsWorker.termnate();
     this._subscription && this._subscription.dispose();
     this._editor && this._editor.dispose();
     this._phantom &&
@@ -296,6 +356,20 @@ export default class Editor extends React.Component<Props> {
     });
   };
 
+  _addTypings = ({ typings }) => {
+    Object.keys(typings).forEach(path => {
+      let extraLib = extraLibs.get(path);
+
+      extraLib && extraLib.dispose();
+      extraLib = monaco.languages.typescript.javascriptDefaults.addExtraLib(
+        typings[path],
+        path
+      );
+
+      extraLibs.set(path, extraLib);
+    });
+  };
+
   _updateMarkers = ({ markers, version }: any) => {
     requestAnimationFrame(() => {
       const model = this._editor.getModel();
@@ -312,6 +386,7 @@ export default class Editor extends React.Component<Props> {
   });
 
   _linterWorker: Worker;
+  _typingsWorker: Worker;
   _subscription: any;
   _editor: any;
   _phantom: any;
