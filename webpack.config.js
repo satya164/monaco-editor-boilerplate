@@ -9,16 +9,7 @@ module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   devtool: 'source-map',
   entry: {
-    // Main bundle
     app: './src/index',
-
-    // Language service workers
-    'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker',
-    'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
-    'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
-
-    // Custom workers
-    'eslint.worker': './src/workers/eslint.worker',
   },
   output: {
     globalObject: 'self',
@@ -53,6 +44,16 @@ module.exports = {
   ),
   module: {
     rules: [
+      {
+        test: /\.worker\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'worker-loader',
+          options: {
+            name: '[name].[hash].js',
+          },
+        },
+      },
       {
         test: /\.js$/,
         exclude: /node_modules|vendor/,

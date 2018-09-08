@@ -4,9 +4,9 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.main';
 import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
+import ESLintWorker from './workers/eslint.worker';
 import light from './themes/light';
 import dark from './themes/dark';
-import config from '../serve.config';
 import './Editor.css';
 
 /**
@@ -22,29 +22,26 @@ SimpleEditorModelResolverService.prototype.findModel = function(
     .find(model => model.uri.toString() === resource.toString());
 };
 
-const WORKER_BASE_URL = `http://localhost:${config.port}/dist`;
-
-const setupWorker = (name, callback) => {
-  const worker = new Worker(`${WORKER_BASE_URL}/${name}.worker.bundle.js`);
-
-  worker.addEventListener('message', ({ data }: any) => callback(data));
-
-  return worker;
-};
-
 global.MonacoEnvironment = {
-  getWorkerUrl(moduleId, label) {
-    const workers = {
-      json: 'json',
-      css: 'css',
-      html: 'html',
-      typescript: 'ts',
-      javascript: 'ts',
-      default: 'editor',
-    };
+  getWorker(moduleId, label) {
+    let MonacoWorker;
 
-    return `${WORKER_BASE_URL}/${workers[label] ||
-      workers.default}.worker.bundle.js`;
+    switch (label) {
+      case 'json':
+        /* $FlowFixMe */
+        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/language/json/json.worker');
+        break;
+      case 'typescript':
+      case 'javascript':
+        /* $FlowFixMe */
+        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/language/typescript/ts.worker');
+        break;
+      default:
+        /* $FlowFixMe */
+        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/editor/editor.worker');
+    }
+
+    return new MonacoWorker();
   },
 };
 
@@ -131,7 +128,10 @@ export default class Editor extends React.Component<Props> {
   }
 
   componentDidMount() {
-    this._linterWorker = setupWorker('eslint', this._updateMarkers);
+    this._linterWorker = new ESLintWorker();
+    this._linterWorker.addEventListener('message', ({ data }: any) =>
+      this._updateMarkers(data)
+    );
 
     const { path, value, ...rest } = this.props;
 

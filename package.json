@@ -34,7 +34,8 @@
     "style-loader": "^0.23.0",
     "webpack": "^4.17.2",
     "webpack-command": "^0.4.1",
-    "webpack-serve": "^2.0.2"
+    "webpack-serve": "^2.0.2",
+    "worker-loader": "^2.0.0"
   },
   "dependencies": {
     "babel-polyfill": "^6.26.0",
