@@ -2,6 +2,7 @@
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.main';
 import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
+import { StaticServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
 import TypingsWorker from './workers/typings.worker';
@@ -132,6 +133,8 @@ const editorStates = new Map();
 // Store details about typings we have loaded
 const extraLibs = new Map();
 
+const codeEditorService = StaticServices.codeEditorService.get();
+
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
     lineNumbers: 'on',
@@ -194,21 +197,7 @@ export default class Editor extends React.Component<Props> {
     const { path, value, ...rest } = this.props;
 
     this._editor = monaco.editor.create(this._node, rest, {
-      codeEditorService: {
-        addCodeEditor: () => {},
-        removeCodeEditor: () => {},
-        listCodeEditors: () => [this._editor],
-
-        getFocusedCodeEditor: () => this._editor,
-
-        registerDecorationType: () => {},
-        removeDecorationType: () => {},
-        resolveDecorationOptions: () => {},
-
-        setTransientModelProperty: () => {},
-        getTransientModelProperty: () => {},
-
-        getActiveCodeEditor: () => this._editor,
+      codeEditorService: Object.assign(Object.create(codeEditorService), {
         openCodeEditor: async ({ resource, options }, editor) => {
           // Open the file with this path
           // This should set the model with the path and value
@@ -223,7 +212,7 @@ export default class Editor extends React.Component<Props> {
           return Promise.resolve({
             getControl: () => editor,
           });
-        },
+        }),
       },
     });
 
