@@ -212,8 +212,8 @@ export default class Editor extends React.Component<Props> {
           return Promise.resolve({
             getControl: () => editor,
           });
-        }),
-      },
+        }
+      }),
     });
 
     Object.keys(this.props.files).forEach(path =>
