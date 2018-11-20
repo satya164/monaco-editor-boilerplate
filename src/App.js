@@ -1,6 +1,5 @@
 /* @flow */
 
-import 'babel-polyfill';
 import * as React from 'react';
 import dedent from 'dedent';
 import Editor from './Editor';

@@ -198,7 +198,7 @@ export default class Editor extends React.Component<Props> {
 
     this._editor = monaco.editor.create(this._node, rest, {
       codeEditorService: Object.assign(Object.create(codeEditorService), {
-        openCodeEditor: async ({ resource, options }, editor) => {
+        openCodeEditor: ({ resource, options }, editor) => {
           // Open the file with this path
           // This should set the model with the path and value
           this.props.onOpenPath(resource.path);
@@ -212,7 +212,7 @@ export default class Editor extends React.Component<Props> {
           return Promise.resolve({
             getControl: () => editor,
           });
-        }
+        },
       }),
     });
 
@@ -252,7 +252,7 @@ export default class Editor extends React.Component<Props> {
 
   componentWillUnmount() {
     this._linterWorker && this._linterWorker.terminate();
-    this._typingsWorker && this._typingsWorker.termnate();
+    this._typingsWorker && this._typingsWorker.terminate();
     this._subscription && this._subscription.dispose();
     this._editor && this._editor.dispose();
     this._phantom &&
