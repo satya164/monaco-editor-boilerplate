@@ -5,8 +5,6 @@ import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/st
 import { StaticServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 import * as React from 'react';
 import debounce from 'lodash/debounce';
-import TypingsWorker from './workers/typings.worker';
-import ESLintWorker from './workers/eslint.worker';
 import light from './themes/light';
 import dark from './themes/dark';
 import './Editor.css';
@@ -26,24 +24,27 @@ SimpleEditorModelResolverService.prototype.findModel = function(
 
 global.MonacoEnvironment = {
   getWorker(moduleId, label) {
-    let MonacoWorker;
-
     switch (label) {
       case 'json':
         /* $FlowFixMe */
-        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/language/json/json.worker');
-        break;
+        return new Worker('monaco-editor/esm/vs/language/json/json.worker', {
+          type: 'module',
+        });
       case 'typescript':
       case 'javascript':
         /* $FlowFixMe */
-        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/language/typescript/ts.worker');
-        break;
+        return new Worker(
+          'monaco-editor/esm/vs/language/typescript/ts.worker',
+          {
+            type: 'module',
+          }
+        );
       default:
         /* $FlowFixMe */
-        MonacoWorker = require('worker-loader!monaco-editor/esm/vs/editor/editor.worker');
+        return new Worker('monaco-editor/esm/vs/editor/editor.worker', {
+          type: 'module',
+        });
     }
-
-    return new MonacoWorker();
   },
 };
 
@@ -97,8 +98,16 @@ const compilerOptions = {
   allowJs: true,
   allowSyntheticDefaultImports: true,
   alwaysStrict: true,
-  jsx: 'React',
-  jsxFactory: 'React.createElement',
+  esModuleInterop: true,
+  forceConsistentCasingInFileNames: true,
+  isolatedModules: true,
+  jsx: monaco.languages.typescript.JsxEmit.React,
+  module: monaco.languages.typescript.ModuleKind.ESNext,
+  moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+  noEmit: true,
+  resolveJsonModule: true,
+  strict: true,
+  target: monaco.languages.typescript.ScriptTarget.ESNext,
 };
 
 monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
@@ -135,6 +144,9 @@ const extraLibs = new Map();
 
 const codeEditorService = StaticServices.codeEditorService.get();
 
+const findModel = (path: string) =>
+  monaco.editor.getModels().find(model => model.uri.path === `/${path}`);
+
 export default class Editor extends React.Component<Props> {
   static defaultProps = {
     lineNumbers: 'on',
@@ -151,9 +163,7 @@ export default class Editor extends React.Component<Props> {
     editorStates.delete(path);
 
     // Remove associated models
-    const model = monaco.editor
-      .getModels()
-      .find(model => model.uri.path === path);
+    const model = findModel(path);
 
     model && model.dispose();
   }
@@ -169,13 +179,19 @@ export default class Editor extends React.Component<Props> {
 
   componentDidMount() {
     // Intialize the linter
-    this._linterWorker = new ESLintWorker();
+    /* $FlowFixMe */
+    this._linterWorker = new Worker('./workers/eslint.worker.js', {
+      type: 'module',
+    });
     this._linterWorker.addEventListener('message', ({ data }: any) =>
       this._updateMarkers(data)
     );
 
     // Intialize the type definitions worker
-    this._typingsWorker = new TypingsWorker();
+    /* $FlowFixMe */
+    this._typingsWorker = new Worker('./workers/typings.worker.js', {
+      type: 'module',
+    });
     this._typingsWorker.addEventListener('message', ({ data }: any) =>
       this._addTypings(data)
     );
@@ -196,12 +212,15 @@ export default class Editor extends React.Component<Props> {
 
     const { path, value, ...rest } = this.props;
 
-    this._editor = monaco.editor.create(this._node, rest, {
-      codeEditorService: Object.assign(Object.create(codeEditorService), {
+    this._editor = monaco.editor.create(
+      this._node,
+      rest,
+      Object.assign(codeEditorService, {
         openCodeEditor: ({ resource, options }, editor) => {
           // Open the file with this path
           // This should set the model with the path and value
-          this.props.onOpenPath(resource.path);
+          // Remove the leading slash added by the Uri before opening
+          this.props.onOpenPath(resource.path.replace(/^\//, ''));
 
           // Move cursor to the desired position
           editor.setSelection(options.selection);
@@ -213,8 +232,8 @@ export default class Editor extends React.Component<Props> {
             getControl: () => editor,
           });
         },
-      }),
-    });
+      })
+    );
 
     Object.keys(this.props.files).forEach(path =>
       this._initializeFile(path, this.props.files[path])
@@ -276,9 +295,7 @@ export default class Editor extends React.Component<Props> {
   }
 
   _initializeFile = (path: string, value: string) => {
-    let model = monaco.editor
-      .getModels()
-      .find(model => model.uri.path === path);
+    let model = findModel(path);
 
     if (model) {
       // If a model exists, we need to update it's value
@@ -296,8 +313,8 @@ export default class Editor extends React.Component<Props> {
     } else {
       model = monaco.editor.createModel(
         value,
-        'javascript',
-        new monaco.Uri().with({ path })
+        undefined,
+        monaco.Uri.from({ scheme: 'file', path })
       );
       model.updateOptions({
         tabSize: 2,
@@ -309,9 +326,7 @@ export default class Editor extends React.Component<Props> {
   _openFile = (path: string, value: string) => {
     this._initializeFile(path, value);
 
-    const model = monaco.editor
-      .getModels()
-      .find(model => model.uri.path === path);
+    const model = findModel(path);
 
     this._editor.setModel(model);
 
@@ -352,7 +367,7 @@ export default class Editor extends React.Component<Props> {
       extraLib && extraLib.dispose();
       extraLib = monaco.languages.typescript.javascriptDefaults.addExtraLib(
         typings[path],
-        path
+        monaco.Uri.from({ scheme: 'file', path }).toString()
       );
 
       extraLibs.set(path, extraLib);

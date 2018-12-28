@@ -3,6 +3,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const WorkerPlugin = require('worker-plugin');
 const { devMiddleware } = require('./serve.config');
 
 module.exports = {
@@ -29,6 +30,7 @@ module.exports = {
     new webpack.ContextReplacementPlugin(
       /monaco-editor(\\|\/)esm(\\|\/)vs(\\|\/)editor(\\|\/)common(\\|\/)services/
     ),
+    new WorkerPlugin(),
   ].concat(
     process.env.NODE_ENV === 'production'
       ? [
@@ -44,16 +46,6 @@ module.exports = {
   ),
   module: {
     rules: [
-      {
-        test: /\.worker\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'worker-loader',
-          options: {
-            name: '[name].[hash].js',
-          },
-        },
-      },
       {
         test: /\.js$/,
         exclude: /node_modules|vendor/,
